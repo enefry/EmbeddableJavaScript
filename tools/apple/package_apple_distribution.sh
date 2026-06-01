@@ -114,10 +114,17 @@ build_apple_lib_paths() {
 }
 
 read_array_or_exit() {
-  local -n out_array=$1
+  local out_array_name=$1
   local build_path=$2
+  local output
+  local line
 
-  readarray -t out_array < <(build_apple_lib_paths "$build_path")
+  output="$(build_apple_lib_paths "$build_path")"
+
+  eval "$out_array_name=()"
+  while IFS= read -r line; do
+    eval "$out_array_name+=(\"$line\")"
+  done <<< "$output"
 }
 
 build_iphoneos_dir="$BUILD_DIR/iphoneos"

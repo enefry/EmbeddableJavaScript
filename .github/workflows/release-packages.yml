@@ -16,6 +16,7 @@ on:
 env:
   # Use a real tag for release runs, otherwise use a per-commit snapshot identifier
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || (github.ref_type == 'tag' && github.ref_name || format('snapshot-{0}', github.sha)) }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   contents: write
@@ -51,7 +52,7 @@ jobs:
             :ejs-android:assembleRelease
 
       - name: Upload AAR artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: android-aar
           path: platform/android/gradle/ejs-android/build/outputs/**/*.aar
@@ -75,10 +76,10 @@ jobs:
           zip -r "EJS-xcframework-${RELEASE_TAG}.zip" "EJS.xcframework"
 
       - name: Upload XCFramework zip artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: apple-xcframework
-          path: dist/apple/EJS-xcframework-${RELEASE_TAG}.zip
+          path: dist/apple/EJS-xcframework-${{ env.RELEASE_TAG }}.zip
 
   publish-release:
     name: Publish to GitHub Release
@@ -89,7 +90,7 @@ jobs:
       - build-apple-xcframework
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v7
         with:
           path: release-artifacts
 
