@@ -1,0 +1,13 @@
+{
+  "name": "package-exports",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "ejs": "./src/ejs.js",
+      "import": "./src/index.js",
+      "default": "./src/fallback.js"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "denied-invalid-exports-target",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "lib/index.js"
+  },
+  "module": "./lib/fallback.js"
+}

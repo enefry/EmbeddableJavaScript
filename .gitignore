@@ -1,0 +1,15 @@
+build/
+.gradle/
+.cxx/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.a
+*.o
+*.dSYM/
+build_xcode
+.omc
+build_coverage
+build_phase4c_prod
+dist

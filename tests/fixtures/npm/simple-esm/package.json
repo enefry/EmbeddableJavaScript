@@ -1,0 +1,7 @@
+{
+  "name": "simple-esm",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js"
+}

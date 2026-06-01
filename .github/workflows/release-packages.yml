@@ -1,0 +1,101 @@
+name: release-packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag name (for example: v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+
+jobs:
+  build-android-aar:
+    name: Build Android AAR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Android AAR
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+        run: |
+          gradle \
+            -PejsAndroidVersion="${RELEASE_TAG}" \
+            -PejsAndroidCompileSdk=36 \
+            :ejs-android:assembleRelease
+
+      - name: Upload AAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aar
+          path: platform/android/gradle/ejs-android/build/outputs/**/*.aar
+
+  build-apple-xcframework:
+    name: Build iOS XCFramework
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build iOS XCFramework zip
+        run: |
+          chmod +x tools/apple/package_apple_distribution.sh
+          EJS_APPLE_PRODUCT_NAME=EJS \
+          EJS_APPLE_PRODUCT_VERSION="${RELEASE_TAG}" \
+          ./tools/apple/package_apple_distribution.sh
+          cd dist/apple
+          zip -r "EJS-xcframework-${RELEASE_TAG}.zip" "EJS.xcframework"
+
+      - name: Upload XCFramework zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-xcframework
+          path: dist/apple/EJS-xcframework-${RELEASE_TAG}.zip
+
+  publish-release:
+    name: Publish to GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - build-android-aar
+      - build-apple-xcframework
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          append_body: true
+          files: |
+            release-artifacts/android-aar/*.aar
+            release-artifacts/apple-xcframework/*.zip

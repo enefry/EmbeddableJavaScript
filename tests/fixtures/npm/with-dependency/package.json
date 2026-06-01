@@ -1,0 +1,10 @@
+{
+  "name": "with-dependency",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "tiny-dep": "2.0.0"
+  },
+  "main": "./index.js"
+}

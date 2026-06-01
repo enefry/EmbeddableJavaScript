@@ -1,0 +1,11 @@
+{
+  "name": "ejs-pkg-convert",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline npm-to-ejspkg converter for EJS pure JavaScript packages.",
+  "bin": {
+    "ejs-pkg-convert": "bin/ejs-pkg-convert.js"
+  },
+  "type": "commonjs",
+  "license": "MIT"
+}

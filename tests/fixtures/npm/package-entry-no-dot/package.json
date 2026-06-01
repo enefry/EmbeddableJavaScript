@@ -1,0 +1,7 @@
+{
+  "name": "package-entry-no-dot",
+  "version": "1.0.0",
+  "type": "module",
+  "module": "lib/index.js",
+  "license": "MIT"
+}

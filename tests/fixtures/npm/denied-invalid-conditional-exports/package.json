@@ -1,0 +1,11 @@
+{
+  "name": "denied-invalid-conditional-exports",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "lib/index.js",
+      "default": "./lib/fallback.js"
+    }
+  }
+}

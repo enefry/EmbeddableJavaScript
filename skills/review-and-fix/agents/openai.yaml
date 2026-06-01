@@ -1,0 +1,4 @@
+interface:
+  display_name: "Full Review Fix Loop"
+  short_description: "Fix review findings with dual-subagent consensus."
+  default_prompt: "Use $review-and-fix to turn a review doc into itemized fixes with two independent subagent reviews, then implement and verify each item."

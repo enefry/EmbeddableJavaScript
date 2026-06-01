@@ -1,0 +1,9 @@
+{
+  "name": "denied-lifecycle",
+  "version": "1.0.0",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "main": "./index.js"
+}
