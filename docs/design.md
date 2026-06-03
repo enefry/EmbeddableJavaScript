@@ -87,6 +87,9 @@ core/src/ejs_runtime_loop_libuv.c       libuv owner-thread loop backend
 core/src/ejs_runtime_loop_stub.c        Stub loop backend
 platform/apple/include/*.h              Apple Objective-C facade headers
 platform/apple/src/EJSApplePlatform.m   Apple runtime/context/provider bridge
+platform/android/java/*                 Android Java platform facade
+platform/android/jni/*                  Android JNI bridge to the C ABI
+platform/android/gradle/*               Android AAR packaging project
 platform/integration_zh.md              Chinese Apple platform integration guide
 modules/wintertc/js/*.js                Generated-bundle input scripts
 modules/wintertc/platform/apple/*       WinterTC Apple add-on installer/providers
@@ -111,6 +114,7 @@ modules/ws/js/*.js                      WebSocket generated-bundle input scripts
 modules/ws/platform/apple/*             WebSocket Apple add-on installer/provider
 modules/buffer/js/*.js                  Buffer generated-bundle input scripts
 modules/buffer/platform/apple/*         Buffer Apple add-on installer
+modules/*/platform/android/*            Android module installers/providers/resources
 modules/kv/js/*.js                      KV and storage generated-bundle input scripts
 modules/kv/platform/apple/*             KV Apple add-on installer/provider
 modules/sqlite/js/*.js                  SQLite generated-bundle input scripts
@@ -267,11 +271,11 @@ The selected loop backend is controlled by `EJS_RUNTIME_LOOP`:
 - `stub`: synchronous compile/test backend.
 - `libuv`: real owner-thread backend.
 
-## 7. Apple Platform Facade
+## 7. Platform Facades
 
-The implemented platform package is `platform/apple`.
+The implemented platform packages are `platform/apple` and `platform/android`.
 
-Public Objective-C surface:
+Apple public Objective-C surface:
 
 - `EJSRuntime`
 - `EJSRuntimeConfiguration`
@@ -282,7 +286,7 @@ Public Objective-C surface:
 - `EJSImmediateOperation`
 - `EJSBlockOperation`
 
-`EJSRuntime` owns one `EJSCoreRuntime`. It creates `EJSContext` objects with
+Apple `EJSRuntime` owns one `EJSCoreRuntime`. It creates `EJSContext` objects with
 stable `contextID` values and prevents duplicate in-flight context IDs. Runtime
 configuration can provide string `contextDefaults`, and per-context
 `EJSContextConfiguration.values` shallowly override those defaults. The merged
@@ -307,9 +311,25 @@ The facade currently handles:
 - provider error mapping into core host errors,
 - context configuration inheritance, override, and snapshot lookup.
 
-Apple framework packaging, Swift overlay, iOS/macOS-specific default provider
-sets, and Android platform support are not implemented in the current source
-tree.
+Android public Java/JNI surface:
+
+- `EJSRuntime`
+- `EJSRuntimeConfiguration`
+- `EJSContext`
+- `EJSContextConfiguration`
+- `EJSProvider`
+- `EJSProviderResponder`
+- `EJSProviderOperation`
+
+`platform/android/jni/ejs_android_platform.cpp` bridges Java runtime/context
+objects to the C ABI and dispatches async/sync provider calls through Java
+providers. `platform/android/gradle/ejs-android` packages the Android Java
+facade, JNI library, generated module bundles, module resources, and merged
+manifest-permission snippets into an Android library.
+
+Apple framework packaging, Android AAR packaging, and explicit add-on modules
+are present in the current source tree. Swift overlay and iOS/macOS-specific
+root default provider sets are not implemented.
 
 TODO: add a runtime-level provider registry or default-provider installer for
 providers that are process/runtime scoped and safe to share across contexts.
@@ -583,10 +603,11 @@ EJSIPAddr.contains("127.0.0.0/8", "127.0.0.1");
 EJSIPAddr.normalize("2001:0db8:0:0:0:0:0:1");
 ```
 
-IPv4 parsing is strict dotted decimal. IPv6 parsing supports `::` compression
-and embedded IPv4 tail syntax, and rejects zone identifiers. `parseCIDR`
-validates prefix ranges and `contains` compares addresses by CIDR prefix.
-Object-form CIDRs are accepted only when they match the parsed CIDR shape.
+IPv4 parsing is strict dotted decimal. IPv6 parsing supports `::` compression,
+embedded IPv4 tail syntax, and scoped addresses such as `fe80::1%lo0`; address
+parses expose the scope as `scopeId`. `parseCIDR` validates prefix ranges and
+`contains` compares addresses by CIDR prefix. Object-form CIDRs are accepted
+only when they match the parsed CIDR shape.
 
 Stage 3 network add-ons are currently split by implementation state:
 
@@ -603,7 +624,7 @@ Stage 3 network add-ons are currently split by implementation state:
   machine/events, text+binary send, close validation, and `ejs.network`
   fail-closed policy gating.
 
-These modules must read the same future `EJSNetworkConfigurationKey` /
+These modules must read the same `EJSNetworkConfigurationKey` /
 `"ejs.network"` policy, fail closed when policy is missing or invalid, and use
 asynchronous `__ejs_native__.invoke` only. For `modules/net`, missing policy
 installs the add-on but `lookup()` and TCP connect reject with `EPERM`;
@@ -807,20 +828,22 @@ EJSPath.posix.basename(path, ext);
 EJSPath.posix.extname(path);
 EJSPath.posix.isAbsolute(path);
 EJSPath.posix.relative(from, to);
+EJSPath.posix.resolve(...parts);
+EJSPath.posix.parse(path);
+EJSPath.posix.format(pathObject);
 ```
 
 Only POSIX string semantics are supported. There are no Windows or URL modes.
 
 ## 19. JS-facing Type Declarations
 
-TODO: add TypeScript declaration files for every public JavaScript-facing
-surface, not only WinterTC. The declarations should act like C headers for JS
-IDE completion and static checking, while staying narrower than browser
+Module-local TypeScript declaration files are the JS-facing API headers for IDE
+completion and static checking. They intentionally stay narrower than browser
 `lib.dom.d.ts` so unsupported DOM/browser APIs are not advertised.
 
-Initial declaration ownership:
+Current declaration ownership:
 
-- `modules/wintertc/types/index.d.ts`: WinterTC-installed globals such as
+- `modules/wintertc/api.d.ts`: WinterTC-installed globals such as
   `WinterTC`, timers, events, URL/URLSearchParams, encoding, Blob/File,
   ReadableStream, Headers/Request/Response/fetch, crypto, performance, and
   console.
@@ -856,6 +879,12 @@ Root CMake always adds `core`, `platform`, `modules/wintertc`, `modules/fs`,
 `modules/stdlib/hashing`, `modules/stdlib/uuid`, `modules/stdlib/ipaddr`,
 `sample`, and `tools`. `tests` is added only when `BUILD_TESTING=ON`.
 
+When configured for Android, `platform/android` also exposes
+`ejs_android_platform`, `ejs_android_modules_java`,
+`ejs_android_modules_metadata`, and `ejs_android_modules_export`. The Gradle
+project at `platform/android/gradle/ejs-android` runs the export target and
+packages generated Java/resources plus the JNI library into an AAR.
+
 Important targets:
 
 - `ejs_core`
@@ -888,14 +917,28 @@ Important targets:
 - `ejs_sqlite_apple_test`
 - `ejs_path_apple`
 - `ejs_path_apple_test`
+- `ejs_worker_apple`
+- `ejs_worker_apple_test`
+- `ejs_xhr_apple`
+- `ejs_xhr_apple_test`
+- `ejs_ws_apple`
+- `ejs_ws_apple_test`
 - `ejs_apple_sample`
+- `ejs_android_platform` (Android CMake configuration)
+- `ejs_android_modules_export` (Android module metadata/resource export)
 
 Typical full backend configuration:
 
 ```sh
 cmake -S . -B build -DEJS_ENGINE=quickjs-ng -DEJS_RUNTIME_LOOP=libuv -DEJS_TEST=ON
-cmake --build build --target ejs_core_test ejs_regression_smoke ejs_apple_platform_test ejs_wintertc_apple_test ejs_fs_apple_test ejs_system_apple_test ejs_fswatch_apple_test ejs_net_apple_test ejs_stdlib_apple_test ejs_buffer_apple_test ejs_kv_apple_test ejs_sqlite_apple_test ejs_path_apple_test ejs_platform_boundary_check
-ctest --test-dir build -R "ejs_phase1_modules_js_test|ejs_network_js_test|ejs_ejspkg_converter_test|ejs_fs_apple_test|ejs_system_apple_test|ejs_fswatch_apple_test|ejs_net_apple_test|ejs_stdlib_apple_test|ejs_platform_boundary_test" --output-on-failure
+cmake --build build --target ejs_core_test ejs_regression_smoke ejs_apple_platform_test ejs_wintertc_apple_test ejs_fs_apple_test ejs_system_apple_test ejs_fswatch_apple_test ejs_net_apple_test ejs_stdlib_apple_test ejs_buffer_apple_test ejs_kv_apple_test ejs_sqlite_apple_test ejs_path_apple_test ejs_worker_apple_test ejs_xhr_apple_test ejs_ws_apple_test ejs_platform_boundary_check
+ctest --test-dir build -R "ejs_phase1_modules_js_test|ejs_network_js_test|ejs_ejspkg_converter_test|ejs_fs_apple_test|ejs_system_apple_test|ejs_fswatch_apple_test|ejs_net_apple_test|ejs_stdlib_apple_test|ejs_worker_apple_test|ejs_xhr_apple_test|ejs_ws_apple_test|ejs_platform_boundary_test" --output-on-failure
+```
+
+Android packaging verification:
+
+```sh
+gradle :ejs-android:assembleRelease
 ```
 
 Do not document a test as passing unless it was run in the current verification
@@ -947,7 +990,8 @@ Current test areas:
 - Buffer Apple add-on installation, JavaScript API validation for UTF-8/Base64/Hex encoding and decoding, concat, equals, and compare.
 - KV Apple add-on installation, policy parsing, path validation, read/write/delete/keys operations on default and custom stores, key/value/list limit enforcement, multi-store isolation, JSON helpers, SQLite persistence, ignored stale manifest files, concurrent runtime access, and bundled `EJSStorage` facade behavior.
 - SQLite Apple add-on installation, policy parsing, opening by configured name, parameter-bound execute/query, transaction commit/rollback, close behavior, unsupported database names, read-only write rejection, BLOB row encoding, and row limits.
-- Path Apple add-on installation, posix path utilities (normalize, join, dirname, basename, extname, isAbsolute, relative).
+- Path Apple add-on installation, posix path utilities (normalize, join,
+  dirname, basename, extname, isAbsolute, relative, resolve, parse, format).
 - Network JS helper tests cover `EJSIPAddr` IPv4/IPv6/generic validation,
   normalization, CIDR parsing/validation, CIDR containment, malformed CIDR
   object rejection, `EJSNet.lookup` request shaping, TCP client
@@ -969,6 +1013,11 @@ Current test areas:
   open/message/binary/close/error/terminal-once behavior and Apple
   `ejs_ws_apple_test` for invalid/default-deny/disabled/system-proxy policy
   paths plus provider request-shaping validation.
+- Android Gradle packaging compiles the Java facade, generated module bundles,
+  module resources, manifest-permission snippets, and JNI bridge into an AAR.
+  Current review found Android behavior-test gaps for net/xhr/ws network-policy
+  parity and SQLite/KV policy limit parity; those should be closed before
+  treating Android provider behavior as fully equivalent to Apple.
 
 ## 22. Documentation Rules
 

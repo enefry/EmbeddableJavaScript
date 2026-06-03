@@ -7,19 +7,29 @@ export {};
 
 declare global {
   /**
-   * Algorithm options for digest helpers.
+   * Output encoding for digest helpers.
    */
+  type EJSHashingEncoding = "hex" | "base64";
+
   interface EJSHashingOptions {
-    encoding?: "hex" | "base64";
+    /**
+     * Omitted or `null` encoding defaults to `hex`.
+     */
+    encoding?: EJSHashingEncoding | null;
   }
+
+  /**
+   * Data accepted by hashing helpers.
+   */
+  type EJSHashingData = string | ArrayBuffer | ArrayBufferView;
 
   /**
    * Hash utility global.
    */
   var EJSHashing: {
-    digest(algorithm: "sha256" | "sha512", data: string | ArrayBuffer | ArrayBufferView, options?: EJSHashingOptions): Promise<string>;
-    sha256(data: string | ArrayBuffer | ArrayBufferView, options?: EJSHashingOptions): Promise<string>;
-    sha512(data: string | ArrayBuffer | ArrayBufferView, options?: EJSHashingOptions): Promise<string>;
+    digest(algorithm: "sha256" | "sha512", data: EJSHashingData, options?: EJSHashingOptions | null): Promise<string>;
+    sha256(data: EJSHashingData, options?: EJSHashingOptions | null): Promise<string>;
+    sha512(data: EJSHashingData, options?: EJSHashingOptions | null): Promise<string>;
   };
 
   /**
@@ -34,9 +44,20 @@ declare global {
   }
 
   /**
+   * Minimal object shape accepted by `EJSIPAddr.contains`.
+   */
+  interface EJSIPCIDRLike {
+    readonly family: 4 | 6;
+    readonly prefixLength: number;
+    readonly bytes: readonly number[];
+  }
+
+  /**
    * CIDR extended address details.
    */
-  interface EJSIPCIDR extends EJSIPAddress {
+  interface EJSIPCIDR extends EJSIPCIDRLike {
+    readonly address: string;
+    readonly normalized: string;
     readonly prefixLength: number;
   }
 
@@ -50,7 +71,7 @@ declare global {
     isValidCIDR(value: unknown): value is string;
     parse(value: string): EJSIPAddress;
     parseCIDR(value: string): EJSIPCIDR;
-    contains(cidr: string | EJSIPCIDR, address: string): boolean;
+    contains(cidr: string | EJSIPCIDRLike, address: string): boolean;
     normalize(value: string): string;
   }
 

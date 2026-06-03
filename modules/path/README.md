@@ -38,6 +38,9 @@ EJSPath.posix.basename("profiles/active/avatar.png", ".png");
 EJSPath.posix.extname("profiles/active/avatar.png");
 EJSPath.posix.isAbsolute("/profiles");
 EJSPath.posix.relative("profiles/active", "profiles/archive/item.json");
+EJSPath.posix.resolve("profiles", "../archive");
+EJSPath.posix.parse("/profiles/active/avatar.png");
+EJSPath.posix.format({ dir: "/profiles/active", name: "avatar", ext: ".png" });
 ```
 
 Only POSIX string semantics are implemented. There is no Windows mode, URL

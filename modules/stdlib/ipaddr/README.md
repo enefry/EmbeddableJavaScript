@@ -20,10 +20,11 @@ EJSIPAddr.normalize("2001:0db8:0:0:0:0:0:1"); // "2001:db8::1"
 ```
 
 IPv4 parsing is strict dotted decimal and rejects octal, hexadecimal, missing
-octets, and out-of-range octets. IPv6 parsing supports `::` compression and
-embedded IPv4 tail syntax such as `::ffff:192.0.2.128`; zone identifiers are
-not accepted. `contains` accepts CIDR strings or parsed CIDR objects and rejects
-malformed object-form CIDRs.
+octets, and out-of-range octets. IPv6 parsing supports `::` compression,
+embedded IPv4 tail syntax such as `::ffff:192.0.2.128`, and scoped addresses
+such as `fe80::1%lo0`; parsed scoped addresses expose `scopeId`. `contains`
+accepts CIDR strings or parsed CIDR objects and rejects malformed object-form
+CIDRs.
 
 ## Apple Notes
 

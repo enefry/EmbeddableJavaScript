@@ -412,12 +412,21 @@ declare global {
    */
   interface SubtleCrypto {
     digest(algorithm: string | { name: string }, data: ArrayBuffer | ArrayBufferView): Promise<ArrayBuffer>;
-    encrypt(algorithm: any, key: any, data: any): Promise<any>;
-    decrypt(algorithm: any, key: any, data: any): Promise<any>;
   }
 
+  type WinterTCCryptoRandomValuesArray =
+    | Int8Array
+    | Uint8Array
+    | Uint8ClampedArray
+    | Int16Array
+    | Uint16Array
+    | Int32Array
+    | Uint32Array
+    | BigInt64Array
+    | BigUint64Array;
+
   var crypto: {
-    getRandomValues<T extends ArrayBufferView>(typedArray: T): T;
+    getRandomValues<T extends WinterTCCryptoRandomValuesArray>(typedArray: T): T;
     randomUUID(): string;
     readonly subtle: SubtleCrypto;
   };

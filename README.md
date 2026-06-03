@@ -16,15 +16,24 @@ Module alignment roadmap (embedded-first):
 | Module | Current state |
 | --- | --- |
 | `core/` | Implemented C runtime kernel with public ABI, QuickJS-ng or stub engine backends, libuv or stub loop backends, context lifecycle, script/module evaluation, native async/sync invoke, timers, error objects, and tests. |
-| `platform/` | Generic platform facade area. The implemented platform is `platform/apple`, which exposes Objective-C `EJSRuntime`, `EJSContext`, `EJSProvider`, and a provider registry/dispatcher over the C ABI. |
+| `platform/` | Generic platform facade area. Implemented platforms are `platform/apple` and `platform/android`: Apple exposes Objective-C `EJSRuntime`, `EJSContext`, and provider APIs; Android exposes Java/JNI runtime, context, provider, and Gradle AAR packaging surfaces. |
 | `modules/wintertc/` | Optional WinterTC JS-facing module installed explicitly by the consumer. It provides a generated JS bundle plus Apple default providers for clock, crypto, console, and fetch when requested through install options. It is not linked into root `platform/apple`. |
 | `modules/fs/` | Optional file-system package installed explicitly by the consumer. It provides `EJSFS.promises` read/write/stat/exists/access/list/mkdir/copy/rename/delete operations, an Apple installer/provider, and sandbox policy loaded from context configuration. |
+| `modules/system/` | Optional host-system package exposing async process, environment, cwd, host, CPU, network-interface, and user metadata helpers through `EJSSystem`. |
+| `modules/fswatch/` | Optional file-watch package exposing `EJSFSWatch.watch(...)` with direct file/directory watch support and explicit recursive-watch rejection on current Apple builds. |
 | `modules/buffer/` | Optional pure-JS binary helper package. It provides `EJSBinary` string, Base64, and Hex encoding/decoding, concatenation, comparison, and equality helpers. |
 | `modules/kv/` | Optional persistent key-value and storage package. It provides `EJSKV` async key-value operations, JSON helpers, namespaced stores, `EJSStorage` facade helpers, and a SQLite-backed Apple provider. |
 | `modules/sqlite/` | Optional SQLite package installed explicitly by the consumer. It provides `EJSSQLite.open`, async execute/query/transaction/close helpers, and an Apple provider backed by system SQLite and context policy. |
-| `modules/path/` | Optional pure-JS POSIX path utility package. It provides `EJSPath.posix` normalize, join, dirname, basename, extname, isAbsolute, and relative operations without accessing the file system. |
-| `sample/` | C and Apple samples. The Apple sample links the WinterTC Apple add-on explicitly. |
-| `tests/` | Core tests, Apple platform tests, WinterTC Apple add-on smoke/conformance-style coverage, EJSFS Apple tests, and tests for Buffer, KV, SQLite, and Path modules. |
+| `modules/path/` | Optional pure-JS POSIX path utility package. It provides `EJSPath.posix` normalize, join, dirname, basename, extname, isAbsolute, relative, resolve, parse, and format operations without accessing the file system. |
+| `modules/worker/` | Optional Web Worker-style package that installs parent/child wrappers and creates isolated worker runtime/context pairs through platform providers. |
+| `modules/net/` | Optional raw network package exposing `EJSNet.lookup`, TCP client/server sockets, UDP sockets, and policy-shaped `EJSNetworkError` diagnostics. |
+| `modules/xhr/` | Optional embedded `XMLHttpRequest` subset with async request/response, events, headers, text/arraybuffer/json response types, and network policy gating. |
+| `modules/ws/` | Optional embedded WebSocket client subset with state constants, event handlers/listeners, text/binary send, close validation, and network policy gating. |
+| `modules/stdlib/` | Optional utility packages for hashing (`EJSHashing`), UUID (`EJSUUID`), and IP/CIDR parsing (`EJSIPAddr`). |
+| `modules/package/` | Optional package installer that registers audited `.ejspkg` module source tables with a context. |
+| `tools/ejs-pkg-convert/` | Offline npm-to-`.ejspkg` converter used by developer/CI workflows. |
+| `sample/` | C and Apple samples. The Apple sample links optional add-ons explicitly. |
+| `tests/` | Core tests, Apple platform/add-on tests, JS wrapper tests, network helper tests, package converter tests, and platform-boundary checks. |
 | `third_party/` | Vendored `quickjs-ng` and `libuv` sources used by the full backend configuration. |
 
 ## Build
@@ -50,16 +59,35 @@ Apple facade, WinterTC add-on, and EJSFS add-on targets are available on Apple
 hosts:
 
 ```sh
-cmake --build build --target ejs_apple_platform_test ejs_wintertc_apple_test ejs_fs_apple_test ejs_path_apple_test ejs_buffer_apple_test ejs_kv_apple_test ejs_sqlite_apple_test ejs_apple_sample
+cmake --build build --target ejs_apple_platform_test ejs_wintertc_apple_test ejs_fs_apple_test ejs_system_apple_test ejs_fswatch_apple_test ejs_net_apple_test ejs_stdlib_apple_test ejs_buffer_apple_test ejs_kv_apple_test ejs_sqlite_apple_test ejs_path_apple_test ejs_worker_apple_test ejs_xhr_apple_test ejs_ws_apple_test ejs_apple_sample
 ./build/tests/ejs_apple_platform_test
 ./build/tests/ejs_wintertc_apple_test
 ./build/tests/ejs_fs_apple_test
+./build/tests/ejs_system_apple_test
+./build/tests/ejs_fswatch_apple_test
+./build/tests/ejs_net_apple_test
+./build/tests/ejs_stdlib_apple_test
 ./build/tests/ejs_path_apple_test
 ./build/tests/ejs_buffer_apple_test
 ./build/tests/ejs_kv_apple_test
 ./build/tests/ejs_sqlite_apple_test
+./build/tests/ejs_worker_apple_test
+./build/tests/ejs_xhr_apple_test
+./build/tests/ejs_ws_apple_test
 ./build/sample/ejs_apple_sample
 ```
+
+Android AAR packaging is available through Gradle when an Android SDK and JDK 17
+are configured:
+
+```sh
+gradle :ejs-android:assembleRelease
+```
+
+The Android library build packages the root Java/JNI platform bridge plus
+optional module Java/resources exported by the CMake
+`ejs_android_modules_export` target. Runtime module installation requires a
+non-stub JavaScript engine such as quickjs-ng.
 
 ### Apple Distribution Artifacts
 
@@ -167,10 +195,10 @@ EJSWinterTCInstallIntoContextWithOptions(context, options, &error);
 ```
 
 The current JS bundle installs timers, events, URL, encoding, Blob/File,
-ReadableStream, Headers/Request/Response/fetch, crypto helpers, performance,
-console, and `globalThis.WinterTC` metadata. When default Apple providers are
-enabled, `wintertc.fetch` supports `data:`, `http:`, and `https:` requests via
-the WinterTC add-on.
+ReadableStream, Headers/Request/Response/fetch, crypto digest/random helpers,
+performance, console, and `globalThis.WinterTC` metadata. When default Apple
+providers are enabled, `wintertc.fetch` supports `data:`, `http:`, and `https:`
+requests via the WinterTC add-on.
 
 ## Buffer Boundary
 
